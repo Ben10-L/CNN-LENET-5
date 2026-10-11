@@ -1,0 +1,25 @@
+{
+    "dataset": "AMHCD_64",
+    "input_shape": [
+        32,
+        32,
+        3
+    ],
+    "num_classes": 33,
+    "architecture": "LeNet-5 RGB, tanh, average pooling",
+    "train_validation_test_split": [
+        0.7,
+        0.15,
+        0.15
+    ],
+    "optimizer_selected_on": "minimum validation loss",
+    "selected_optimizer": "sgd",
+    "best_validation_epoch": 24,
+    "best_validation_loss": 0.059491757303476334,
+    "best_validation_accuracy": 0.9834240078926086,
+    "test_accuracy": 0.9805749805749806,
+    "test_macro_precision": 0.9807595283427428,
+    "test_macro_recall": 0.9805749805749805,
+    "test_macro_f1": 0.980593903114131,
+    "test_support": 3861
+}

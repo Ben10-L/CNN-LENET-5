@@ -1,0 +1,14 @@
+{
+    "adam": {
+        "optimizer": "adam",
+        "best_epoch": 24,
+        "val_loss": 0.09296917170286179,
+        "val_accuracy": 0.9735819697380066
+    },
+    "sgd": {
+        "optimizer": "sgd",
+        "best_epoch": 24,
+        "val_loss": 0.059491757303476334,
+        "val_accuracy": 0.9834240078926086
+    }
+}
