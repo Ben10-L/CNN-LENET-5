@@ -1,155 +1,254 @@
 # LeNet-5 for Amazigh Handwritten Character Recognition
 
-Implementation and evaluation of a **LeNet-5 convolutional neural network** for recognizing **33 handwritten Tifinagh characters** from the Amazigh Handwritten Character Database (AMHCD). This project was developed for the Deep Learning practical assignment (Master IAA).
+<p align="center">
+  <strong>Handwritten Tifinagh classification with a compact convolutional neural network</strong><br>
+  An end-to-end TensorFlow/Keras implementation, from data preparation to model evaluation.
+</p>
 
-## Results
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white">
+  <img alt="TensorFlow" src="https://img.shields.io/badge/TensorFlow-Keras-FF6F00?logo=tensorflow&logoColor=white">
+  <img alt="Dataset" src="https://img.shields.io/badge/Dataset-AMHCD-52616B">
+  <img alt="Classes" src="https://img.shields.io/badge/Classes-33-52616B">
+  <img alt="Test accuracy" src="https://img.shields.io/badge/Test%20accuracy-98.06%25-196E58">
+</p>
 
-| Metric | Result |
-|---|---:|
-| Test accuracy (selected SGD model) | **98.06%** |
-| Test macro F1-score | **98.06%** |
-| Correct / total test predictions | **3,786 / 3,861** |
-| Best SGD validation accuracy | **98.34%** |
-| Number of trainable parameters | **63,961** |
+---
 
-### Optimizer comparison
+## Overview
+
+This project implements and evaluates a **LeNet-5-inspired convolutional neural network (CNN)** for classifying **33 handwritten Amazigh (Tifinagh) characters** using the **Amazigh Handwritten Character Database (AMHCD)**. It follows an experimental machine-learning workflow: dataset inspection, preprocessing, stratified splitting, model construction, training with two optimizers, and quantitative and qualitative evaluation.
+
+The implementation uses **RGB inputs** and modular, configurable layer-building functions. The repository includes Python source files, a Jupyter notebook, training histories, and visualizations intended to support reproducibility and scientific reporting.
+
+**Dataset:** [Amazigh Handwritten Character Database (AMHCD) — Kaggle](https://www.kaggle.com/datasets/benaddym/amazigh-handwritten-character-database-amhcd)
+
+## Key results
+
+The checkpoint selected by **minimum validation loss** was trained with **SGD (momentum = 0.9)**. The held-out test set was used for final evaluation, not for optimizer selection.
+
+| Test-set metric | Result |
+|:--|--:|
+| **Accuracy** | **98.06%** |
+| **Macro F1-score** | **98.06%** |
+| Correct predictions | 3,786 / 3,861 |
+| Incorrect predictions | 75 / 3,861 |
+| Number of classes | 33 |
+| Trainable model parameters | 63,961 |
+
+### Optimizer benchmark
+
+Both models use the same architecture and data split. The learning rates and SGD momentum are specified explicitly below.
 
 | Optimizer | Learning rate | Best epoch | Validation accuracy | Validation loss |
-|---|---:|---:|---:|---:|
+|:--|--:|--:|--:|--:|
 | Adam | 0.001 | 24 | 97.36% | 0.0930 |
-| SGD (momentum = 0.9) | 0.01 | 24 | **98.34%** | **0.0595** |
+| **SGD + momentum (0.9)** | **0.01** | **24** | **98.34%** | **0.0595** |
 
-The model was **selected using validation loss**, and the test set was reserved for final evaluation. These results are from one training run per optimizer, not a multi-seed benchmark.
+SGD performed better **in this configuration and single run**. This does not establish that SGD is generally superior to Adam; a controlled multi-seed, hyperparameter-matched benchmark would be needed for a stronger comparison.
 
-## Dataset
+![Validation accuracy and loss across optimizers](results/optimizer_comparison.png)
 
-**Source:** [AMHCD on Kaggle](https://www.kaggle.com/datasets/benaddym/amazigh-handwritten-character-database-amhcd)
+## Dataset and preprocessing
 
-- **25,740** images belonging to **33 classes** (780 images per class).
-- Original images: **64 × 64 pixels, RGB**.
-- Model input: **32 × 32 × 3 (RGB)**.
-- Preprocessing: resizing and pixel scaling to **[0, 1]**.
-- Stratified split: **70% training (18,018)**, **15% validation (3,861)**, **15% testing (3,861)**.
-- Random seed: **42**.
+| Property | Value |
+|:--|:--|
+| Dataset | AMHCD |
+| Total images | 25,740 |
+| Classes | 33 Tifinagh characters |
+| Images per class | 780 |
+| Original image format | RGB, 64 × 64 pixels |
+| Network input | RGB, 32 × 32 × 3 |
+| Pixel normalization | Divide by 255, resulting in values in [0, 1] |
+| Random seed | 42 |
 
-Download the dataset from Kaggle, then place the character subfolders (e.g., `ya/`, `yab/`, `yach/`, ...) inside `data/AMHCD_64/`.
+The images are split using **stratified random sampling** so that each class is represented proportionally:
 
-> The dataset is not included in this repository. The split is stratified **by image/class**; it is not established as writer-independent.
+| Split | Percentage | Images | Images per class |
+|:--|--:|--:|--:|
+| Training | 70% | 18,018 | 546 |
+| Validation | 15% | 3,861 | 117 |
+| Test | 15% | 3,861 | 117 |
+| **Total** | **100%** | **25,740** | **780** |
 
-## Model architecture
+Preprocessing is applied at load time via `tf.data`; source images are not overwritten.
 
-| Layer | Output shape |
-|---|---|
-| Input (RGB) | 32 × 32 × 3 |
-| C1 — Conv2D, 6 filters, 5 × 5 | 28 × 28 × 6 |
-| S2 — AveragePooling2D, 2 × 2 | 14 × 14 × 6 |
-| C3 — Conv2D, 16 filters, 5 × 5 | 10 × 10 × 16 |
-| S4 — AveragePooling2D, 2 × 2 | 5 × 5 × 16 |
-| Flatten | 400 |
-| C5 — Dense | 120 |
-| F6 — Dense | 84 |
-| Output — Softmax | 33 |
+![Examples of preprocessed RGB Tifinagh characters](results/dataset_examples.png)
 
-Hidden layers use **tanh**, and training uses **sparse categorical cross-entropy**. The C5 stage is implemented using `Flatten` followed by `Dense(120)`, as a practical adaptation of LeNet-5. Layer-building functions and model hyperparameters can be adjusted in `src/model.py`.
+> **Evaluation scope:** Stratification is by **image/class**, not by writer identity. Writer-independent generalization has **not** been demonstrated by this split.
 
-## Project structure
+## Network architecture
+
+The model retains the principal stages of LeNet-5 while accepting three-channel RGB images and producing probabilities for 33 classes. Hidden layers use `tanh`; the final classification layer uses `softmax`.
+
+| Stage | Configuration | Output shape | Trainable parameters |
+|:--|:--|:--|--:|
+| Input | RGB image | 32 × 32 × 3 | — |
+| C1 | Conv2D, 6 filters, 5 × 5, valid padding | 28 × 28 × 6 | 456 |
+| S2 | AveragePooling2D, 2 × 2 | 14 × 14 × 6 | 0 |
+| C3 | Conv2D, 16 filters, 5 × 5, valid padding | 10 × 10 × 16 | 2,416 |
+| S4 | AveragePooling2D, 2 × 2 | 5 × 5 × 16 | 0 |
+| Flatten | Flatten feature maps | 400 | 0 |
+| C5 | Dense, 120 units | 120 | 48,120 |
+| F6 | Dense, 84 units | 84 | 10,164 |
+| Classifier | Dense, 33 units, softmax | 33 | 2,805 |
+| **Total** | | | **63,961** |
+
+The C5 stage is implemented as `Flatten` followed by `Dense(120)`—a practical dense-layer adaptation rather than the original convolutional C5 formulation. The model and layer parameters can be changed in [`src/model.py`](src/model.py).
+
+**Training configuration:** sparse categorical cross-entropy; batch size 32; up to 30 epochs; best-checkpoint selection based on validation loss; early stopping with patience 5.
+
+## Repository layout
 
 ```text
 CNN-LENET-5/
-├── data/                   # AMHCD dataset (not tracked by Git)
-│   └── AMHCD_64/
+├── data/                       # Downloaded dataset (excluded from Git)
+│   └── AMHCD_64/               # One folder per Tifinagh class
 ├── notebooks/
-│   └── LeNet5.ipynb        # Experiments, plots and final evaluation
+│   └── LeNet5.ipynb            # Experiments, analysis and plots
 ├── src/
-│   ├── dataset.py          # Dataset inspection, preprocessing, splits
-│   ├── model.py            # Parametric LeNet-5 architecture
-│   ├── train.py            # Training with Adam / SGD
-│   └── evaluate.py         # Metrics, confusion matrix, feature maps
-├── results/                # Trained models, CSV/JSON metrics, figures
+│   ├── dataset.py              # Dataset checks, preprocessing and splits
+│   ├── model.py                # Parametric LeNet-5 model
+│   ├── train.py                # Adam / SGD training and checkpoints
+│   └── evaluate.py             # Evaluation metrics and feature maps
+├── results/                    # Checkpoints, metrics and exported figures
 ├── .gitignore
 └── README.md
 ```
 
-## Installation
+## Quick start
 
-From the project root, create and activate a virtual environment:
+### 1. Clone and set up the environment
 
 ```bash
+git clone https://github.com/Ben10-L/CNN-LENET-5.git
+cd CNN-LENET-5
 python3 -m venv .venv
-source .venv/bin/activate            # macOS / Linux
+source .venv/bin/activate  # macOS / Linux
 python -m pip install --upgrade pip
-pip install tensorflow numpy pandas matplotlib seaborn scikit-learn pillow jupyter ipykernel
+python -m pip install tensorflow numpy pandas matplotlib seaborn scikit-learn pillow jupyter ipykernel
 ```
 
-Use a Python/TensorFlow combination supported on your operating system. In VS Code, select the `.venv` interpreter and Jupyter kernel.
+Use a **Python version supported by your TensorFlow release**. In VS Code, select `.venv` as both the Python interpreter and notebook kernel.
 
-## How to run
+### 2. Download the dataset
 
-All commands below should be run **from the project root**.
+Download [AMHCD from Kaggle](https://www.kaggle.com/datasets/benaddym/amazigh-handwritten-character-database-amhcd) and place the class directories directly under `data/AMHCD_64/`:
 
-**1. Check the dataset**
+```text
+data/AMHCD_64/
+├── ya/
+├── yab/
+├── yach/
+├── ...
+└── yu/
+```
+
+The dataset is intentionally **not included** in this repository.
+
+### 3. Verify data and model
+
+Run all commands from the **repository root**:
 
 ```bash
 python src/dataset.py
-```
-
-**2. Inspect the network**
-
-```bash
 python src/model.py
 ```
 
-**3. Train the models**
+The dataset check should report **33 classes and 25,740 images**; the model summary should report **63,961 parameters**.
+
+### 4. Train
 
 ```bash
+# Compare both optimizers
 python src/train.py --optimizer both --epochs 30
-```
 
-To train only one optimizer:
-
-```bash
+# Or train separately
 python src/train.py --optimizer adam --epochs 30
 python src/train.py --optimizer sgd --epochs 30
 ```
 
-Training uses a batch size of **32**, validation-based checkpointing, and early stopping (patience = 5). Best models are saved to `results/lenet5_adam.keras` and `results/lenet5_sgd.keras`.
+You can also change the batch size or learning rate:
 
-**4. Run the notebook**
+```bash
+python src/train.py --optimizer sgd --epochs 30 --batch-size 32 --lr 0.01
+```
 
-Open `notebooks/LeNet5.ipynb` in VS Code, select the `.venv` kernel and use **Run All**. The notebook expects the trained model and history files inside `results/`; by default, `RUN_TRAINING = False` avoids retraining. Set it to `True` only if you want to train again.
+Best checkpoints and training logs are written to `results/`.
 
-## Visualizations
+### 5. Run the evaluation notebook
 
-### Optimizer comparison
+Open [`notebooks/LeNet5.ipynb`](notebooks/LeNet5.ipynb), select the `.venv` kernel and choose **Run All**.
 
-![Validation accuracy and loss: Adam vs SGD](results/optimizer_comparison.png)
+The notebook loads the saved histories and model checkpoints, compares optimizers, evaluates the selected model on the test set, and generates figures. With `RUN_TRAINING = False`, it expects the necessary checkpoints and histories to already exist in `results/`. **Run training first if those files are absent.**
 
-### Training curves
+## Evaluation and visualizations
 
-![Training and validation curves](results/training_history.png)
+### Learning curves
 
-### Confusion matrix
+Training and validation accuracy/loss help assess convergence and possible overfitting.
 
-![Normalized confusion matrix](results/confusion_matrix_normalized.png)
+![Training and validation learning curves](results/training_history.png)
 
-### Learned feature maps
+### Normalized confusion matrix
+
+Rows represent true labels and columns represent predicted labels. The strong diagonal indicates high classification accuracy across most of the 33 classes.
+
+![Normalized test-set confusion matrix](results/confusion_matrix_normalized.png)
+
+### Learned feature representations
+
+The following feature maps illustrate how the first and second convolutional layers respond to one input character. C1 retains more local stroke and edge information, while C3 combines earlier responses into higher-level patterns.
+
+**C1 — first convolutional layer**
 
 ![C1 feature maps](results/feature_maps_C1.png)
 
+**C3 — second convolutional layer**
+
 ![C3 feature maps](results/feature_maps_C3.png)
 
-### Misclassified examples
+### Error analysis
 
-![Examples of incorrect predictions](results/misclassified_examples.png)
+Misclassified examples expose visually ambiguous characters and high-confidence mistakes. For example, the model sometimes confuses `yaz` with `yazz`, or `yar` with `yam`.
 
-## Discussion and limitations
+![Misclassified Tifinagh test examples](results/misclassified_examples.png)
 
-The trained LeNet-5 model correctly classifies most test images. Errors concentrate in a small set of visually similar handwritten characters, including **`yaz` / `yazz`** and **`yar` / `yam`**. In this run, SGD had better validation results than Adam; this does not establish that SGD is universally superior.
+Additional per-class precision, recall and F1-scores are available in [`results/per_class_metrics.csv`](results/per_class_metrics.csv).
 
-The current evaluation uses a **stratified image-level split**. If writer identities are available, a writer-independent split would provide a stronger assessment of generalization to unseen handwriting styles.
+## Generated artifacts
 
-## Reference
+| Artifact | Purpose |
+|:--|:--|
+| `results/lenet5_adam.keras` | Best Adam checkpoint |
+| `results/lenet5_sgd.keras` | Best SGD checkpoint |
+| `results/history_adam.csv` / `.json` | Adam training logs |
+| `results/history_sgd.csv` / `.json` | SGD training logs |
+| `results/validation_comparison.csv` | Validation comparison table (notebook output) |
+| `results/per_class_metrics.csv` | Test precision, recall, F1 and support by class |
+| `results/confusion_matrix.png` | Absolute test-set confusion matrix |
+| `results/confusion_matrix_normalized.png` | Row-normalized test confusion matrix |
+| `results/optimizer_comparison.png` | Validation curves for both optimizers |
+| `results/feature_maps_C1.png` / `feature_maps_C3.png` | Learned convolutional activations |
+| `results/misclassified_examples.png` | Examples of classification errors |
 
-Y. LeCun, L. Bottou, Y. Bengio and P. Haffner, “Gradient-Based Learning Applied to Document Recognition,” *Proceedings of the IEEE*, vol. 86, no. 11, pp. 2278–2324, 1998.
+Some exported figures and tables are created when the notebook is executed. Files appear in GitHub only after they have been committed to the repository.
 
-**Repository:** https://github.com/Ben10-L/CNN-LENET-5
+## Reproducibility and limitations
+
+- **Selection protocol:** model selection uses **validation loss**; test results are reported only for final evaluation.
+- **Single-run comparison:** results are from one seeded experiment per optimizer. Differences may change with initialization, split, or tuning.
+- **Different optimizer settings:** Adam and SGD use different learning rates, and SGD additionally uses momentum; this is a practical comparison rather than a matched hyperparameter study.
+- **Writer overlap:** the provided random image split does not guarantee separation of writers between training and test data.
+- **Generalization:** accuracy on AMHCD does not, on its own, establish performance on new writers, devices, or external datasets.
+
+These points should be considered when interpreting the reported **98.06% test accuracy**.
+
+## References
+
+1. Y. LeCun, L. Bottou, Y. Bengio and P. Haffner, *Gradient-Based Learning Applied to Document Recognition*, Proceedings of the IEEE, 86(11), 2278–2324 (1998). [DOI: 10.1109/5.726791](https://doi.org/10.1109/5.726791).
+2. [AMHCD: Amazigh Handwritten Character Database, Kaggle](https://www.kaggle.com/datasets/benaddym/amazigh-handwritten-character-database-amhcd).
+
+---
+
+<p align="center"><sub>Developed as a Deep Learning coursework project · Amazigh handwritten character recognition</sub></p>
